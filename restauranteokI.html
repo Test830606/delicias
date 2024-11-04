@@ -1,0 +1,251 @@
+<html><head><base href=""><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Sistema de Reservas - Restaurante</title><script src="https://cdn.tailwindcss.com"></script><script src="https://code.jquery.com/jquery-3.6.0.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script><link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet" /><script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
+
+<style>
+  .notification {
+    animation: notification 3s ease-in-out forwards;
+  }
+  @keyframes notification {
+    0% { transform: translateY(-100%); }
+    10% { transform: translateY(0); }
+    90% { transform: translateY(0); }
+    100% { transform: translateY(-100%); }
+  }
+</style>
+</head>
+
+<body class="bg-gray-100">
+<div id="notification" class="fixed top-0 left-0 right-0 bg-green-500 text-white p-4 text-center transform -translate-y-full"></div>
+
+<div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+  <div class="bg-white p-8 rounded-lg w-96">
+    <h2 class="text-2xl font-bold mb-4">Administración</h2>
+    <input type="text" id="username" placeholder="Usuario" class="w-full p-2 mb-4 border rounded">
+    <input type="password" id="password" placeholder="Contraseña" class="w-full p-2 mb-4 border rounded">
+    <button onclick="login()" class="w-full bg-blue-600 text-white p-2 rounded">Ingresar</button>
+  </div>
+</div>
+
+<nav class="bg-blue-600 p-4 text-white">
+  <div class="container mx-auto flex justify-between items-center">
+    <h1 class="text-2xl font-bold">Restaurante App</h1>
+    <div class="flex space-x-4">
+      <button onclick="showSection('reserve')" class="hover:bg-blue-700 px-3 py-2 rounded">Reservar</button>
+      <button onclick="showSection('admin')" class="hover:bg-blue-700 px-3 py-2 rounded">Administración</button>
+    </div>
+  </div>
+</nav>
+
+<main class="container mx-auto p-4">
+  <section id="reserve" class="">
+    <h2 class="text-2xl font-bold mb-4">Nueva Reserva</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-white p-4 rounded shadow">
+        <form id="reservationForm" class="space-y-4">
+          <input type="text" id="name" placeholder="Nombre" required class="w-full p-2 border rounded">
+          <input type="text" id="lastname" placeholder="Apellidos" required class="w-full p-2 border rounded">
+          <input type="email" id="email" placeholder="Correo electrónico" required class="w-full p-2 border rounded">
+          <input type="tel" id="phone" placeholder="Número de móvil" required class="w-full p-2 border rounded">
+          <input type="number" id="guests" placeholder="Número de comensales" required min="1" class="w-full p-2 border rounded">
+          <input type="date" id="reservationDate" required class="w-full p-2 border rounded">
+          <select id="menuSelect" required class="w-full p-2 border rounded">
+            <option value="">Seleccione un menú</option>
+          </select>
+          <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded">Confirmar Reserva</button>
+        </form>
+      </div>
+      <div id="calendar"></div>
+    </div>
+  </section>
+
+  <section id="admin" class="hidden">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-white p-4 rounded shadow">
+        <h3 class="text-xl font-bold mb-4">Gestión de Menús</h3>
+        <form id="menuForm" class="space-y-4">
+          <input type="text" id="menuName" placeholder="Nombre del menú" required class="w-full p-2 border rounded">
+          <textarea id="menuDescription" placeholder="Descripción" required class="w-full p-2 border rounded"></textarea>
+          <input type="number" id="menuPrice" placeholder="Precio" required step="0.01" class="w-full p-2 border rounded">
+          <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded">Agregar Menú</button>
+        </form>
+        <div id="menuList" class="mt-4 space-y-2"></div>
+      </div>
+      <div class="bg-white p-4 rounded shadow">
+        <h3 class="text-xl font-bold mb-4">Reservas</h3>
+        <div id="reservationList" class="space-y-2"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+let menus = [];
+let reservations = [];
+let isLoggedIn = false;
+
+function showSection(sectionId) {
+  if (sectionId === 'admin' && !isLoggedIn) {
+    document.getElementById('loginModal').classList.remove('hidden');
+    return;
+  }
+  
+  document.querySelectorAll('main section').forEach(section => {
+    section.classList.add('hidden');
+  });
+  document.getElementById(sectionId).classList.remove('hidden');
+}
+
+function login() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  
+  if (username === 'cansino' && password === 'cansino08') {
+    isLoggedIn = true;
+    document.getElementById('loginModal').classList.add('hidden');
+    showSection('admin');
+    showNotification('Bienvenido al panel de administración');
+  } else {
+    showNotification('Credenciales incorrectas');
+  }
+}
+
+document.getElementById('reservationForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const reservation = {
+    id: Date.now(),
+    name: document.getElementById('name').value,
+    lastname: document.getElementById('lastname').value,
+    email: document.getElementById('email').value,
+    phone: document.getElementById('phone').value,
+    guests: document.getElementById('guests').value,
+    date: document.getElementById('reservationDate').value,
+    menuId: document.getElementById('menuSelect').value
+  };
+  
+  reservations.push(reservation);
+  renderReservations();
+  showNotification('Reserva confirmada');
+  this.reset();
+});
+
+document.getElementById('menuForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const menu = {
+    id: Date.now(),
+    name: document.getElementById('menuName').value,
+    description: document.getElementById('menuDescription').value,
+    price: document.getElementById('menuPrice').value
+  };
+  
+  menus.push(menu);
+  renderMenus();
+  updateMenuSelect();
+  showNotification('Menú agregado');
+  this.reset();
+});
+
+function renderMenus() {
+  const menuList = document.getElementById('menuList');
+  menuList.innerHTML = menus.map(menu => `
+    <div class="bg-gray-100 p-4 rounded">
+      <h4 class="font-bold">${menu.name}</h4>
+      <p>${menu.description}</p>
+      <p class="font-bold">$${menu.price}</p>
+      <div class="mt-2 space-x-2">
+        <button onclick="editMenu(${menu.id})" class="bg-yellow-500 text-white px-2 py-1 rounded">Editar</button>
+        <button onclick="deleteMenu(${menu.id})" class="bg-red-500 text-white px-2 py-1 rounded">Eliminar</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderReservations() {
+  const reservationList = document.getElementById('reservationList');
+  reservationList.innerHTML = reservations.map(reservation => `
+    <div class="bg-gray-100 p-4 rounded">
+      <h4 class="font-bold">${reservation.name} ${reservation.lastname}</h4>
+      <p>Email: ${reservation.email}</p>
+      <p>Teléfono: ${reservation.phone}</p>
+      <p>Comensales: ${reservation.guests}</p>
+      <p>Fecha: ${reservation.date}</p>
+      <p>Menú: ${menus.find(m => m.id === parseInt(reservation.menuId))?.name || 'No especificado'}</p>
+      <div class="mt-2 space-x-2">
+        <button onclick="editReservation(${reservation.id})" class="bg-yellow-500 text-white px-2 py-1 rounded">Editar</button>
+        <button onclick="deleteReservation(${reservation.id})" class="bg-red-500 text-white px-2 py-1 rounded">Eliminar</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateMenuSelect() {
+  const select = document.getElementById('menuSelect');
+  select.innerHTML = `
+    <option value="">Seleccione un menú</option>
+    ${menus.map(menu => `<option value="${menu.id}">${menu.name} - $${menu.price}</option>`).join('')}
+  `;
+}
+
+function editMenu(id) {
+  const menu = menus.find(m => m.id === id);
+  if (!menu) return;
+  
+  document.getElementById('menuName').value = menu.name;
+  document.getElementById('menuDescription').value = menu.description;
+  document.getElementById('menuPrice').value = menu.price;
+  
+  menus = menus.filter(m => m.id !== id);
+  renderMenus();
+  updateMenuSelect();
+}
+
+function deleteMenu(id) {
+  menus = menus.filter(m => m.id !== id);
+  renderMenus();
+  updateMenuSelect();
+  showNotification('Menú eliminado');
+}
+
+function editReservation(id) {
+  const reservation = reservations.find(r => r.id === id);
+  if (!reservation) return;
+  
+  document.getElementById('name').value = reservation.name;
+  document.getElementById('lastname').value = reservation.lastname;
+  document.getElementById('email').value = reservation.email;
+  document.getElementById('phone').value = reservation.phone;
+  document.getElementById('guests').value = reservation.guests;
+  document.getElementById('reservationDate').value = reservation.date;
+  document.getElementById('menuSelect').value = reservation.menuId;
+  
+  reservations = reservations.filter(r => r.id !== id);
+  renderReservations();
+  showSection('reserve');
+}
+
+function deleteReservation(id) {
+  reservations = reservations.filter(r => r.id !== id);
+  renderReservations();
+  showNotification('Reserva eliminada');
+}
+
+function showNotification(message) {
+  const notification = document.getElementById('notification');
+  notification.textContent = message;
+  notification.classList.add('notification');
+  setTimeout(() => {
+    notification.classList.remove('notification');
+  }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var calendarEl = document.getElementById('calendar');
+  var calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    selectable: true,
+    select: function(info) {
+      document.getElementById('reservationDate').value = info.startStr;
+    }
+  });
+  calendar.render();
+});
+</script>
+</body></html>
